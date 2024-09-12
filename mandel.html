@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+For J* with a little help from mandelbrot and Q*<br>
+You can zoom using mouse<br>
+<head>
+    <meta charset="UTF-8">
+    <title>Mandelbrot Set Zoom</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mandelbrotCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('mandelbrotCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width;
+        let height = canvas.height;
+
+        // Initial view window
+        let xmin = -2.5;
+        let xmax = 1;
+        let ymin = -1;
+        let ymax = 1;
+
+        let maxIterations = 200;
+
+        let dragging = false;
+        let startX, startY, endX, endY;
+
+        // Function to draw the Mandelbrot set
+        function drawMandelbrot() {
+            const imageData = ctx.createImageData(width, height);
+            for (let px = 0; px < width; px++) {
+                for (let py = 0; py < height; py++) {
+                    // Map pixel to complex plane
+                    let x0 = xmin + (px / width) * (xmax - xmin);
+                    let y0 = ymin + (py / height) * (ymax - ymin);
+
+                    let x = 0;
+                    let y = 0;
+                    let iteration = 0;
+                    let maxIter = maxIterations;
+
+                    while (x*x + y*y <= 4 && iteration < maxIter) {
+                        let xtemp = x*x - y*y + x0;
+                        y = 2*x*y + y0;
+                        x = xtemp;
+                        iteration++;
+                    }
+
+                    let color;
+                    if (iteration == maxIter) {
+                        color = [0, 0, 0]; // Black
+                    } else {
+                        let hue = Math.floor(360 * iteration / maxIter);
+                        color = hslToRgb(hue / 360, 1, 0.5);
+                    }
+
+                    let index = (px + py * width) * 4;
+                    imageData.data[index] = color[0];
+                    imageData.data[index + 1] = color[1];
+                    imageData.data[index + 2] = color[2];
+                    imageData.data[index + 3] = 255; // Alpha
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // Function to convert HSL to RGB
+        function hslToRgb(h, s, l){
+            var r, g, b;
+
+            if(s == 0){
+                r = g = b = l; // achromatic
+            } else {
+                function hue2rgb(p, q, t){
+                    if(t < 0) t += 1;
+                    if(t > 1) t -= 1;
+                    if(t < 1/6) return p + (q - p) * 6 * t;
+                    if(t < 1/2) return q;
+                    if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                }
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+
+            return [ Math.round(r * 255), Math.round(g * 255), Math.round(b * 255) ];
+        }
+
+        // Mouse events for selecting area
+        canvas.addEventListener('mousedown', function(e) {
+            dragging = true;
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            if (dragging) {
+                endX = e.offsetX;
+                endY = e.offsetY;
+                drawMandelbrot();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([6]);
+                ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            }
+        });
+
+        canvas.addEventListener('mouseup', function(e) {
+            if (dragging) {
+                dragging = false;
+                endX = e.offsetX;
+                endY = e.offsetY;
+                // Update the view window
+                let xMinNew = xmin + (Math.min(startX, endX) / width) * (xmax - xmin);
+                let xMaxNew = xmin + (Math.max(startX, endX) / width) * (xmax - xmin);
+                let yMinNew = ymin + (Math.min(startY, endY) / height) * (ymax - ymin);
+                let yMaxNew = ymin + (Math.max(startY, endY) / height) * (ymax - ymin);
+
+                xmin = xMinNew;
+                xmax = xMaxNew;
+                ymin = yMinNew;
+                ymax = yMaxNew;
+
+                drawMandelbrot();
+            }
+        });
+
+        // Key events for zooming
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'i') {
+                // Zoom in
+                let zoomFactor = 0.8;
+                let xCenter = (xmin + xmax) / 2;
+                let yCenter = (ymin + ymax) / 2;
+                let xRange = (xmax - xmin) * zoomFactor / 2;
+                let yRange = (ymax - ymin) * zoomFactor / 2;
+                xmin = xCenter - xRange;
+                xmax = xCenter + xRange;
+                ymin = yCenter - yRange;
+                ymax = yCenter + yRange;
+                drawMandelbrot();
+            } else if (e.key === 'o') {
+                // Zoom out
+                let zoomFactor = 1.25;
+                let xCenter = (xmin + xmax) / 2;
+                let yCenter = (ymin + ymax) / 2;
+                let xRange = (xmax - xmin) * zoomFactor / 2;
+                let yRange = (ymax - ymin) * zoomFactor / 2;
+                xmin = xCenter - xRange;
+                xmax = xCenter + xRange;
+                ymin = yCenter - yRange;
+                ymax = yCenter + yRange;
+                drawMandelbrot();
+            }
+        });
+
+        drawMandelbrot();
+    </script>
+</body>
+</html>
